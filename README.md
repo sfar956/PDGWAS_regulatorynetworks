@@ -12,7 +12,9 @@ Supplementary table 4: Nalls et al. 2019 GWAS: Sig eQTLs CoDeS3D output: Brain H
 
 Supplementary table 5: SNPnexus epigenome roadmap for all 90 SNPs, including histone modifications and DNaseI marker of open chromatin
 
-Supplementary table 6: Pathway analysis of the 518 genes; gProfiler (g:OST)
+Supplementary table 6a: Pathway analysis of the 518 genes; gProfiler (g:OST)
+
+Supplementary table 6b: Pathway analysis of the 165 brain-specific genes; gProfiler (g:OST)
 
 Supplementary table 7: The LOEUF values (downloaded from gnomAD) for each of the 518 genes included in the gene network. LOEUF score ("loss-of-function observed/expected upper bound fraction”) indicates the tolerance of a given gene to inactivation. A low LOEUF score indicates strong selection against loss-of-function variation.
 
