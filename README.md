@@ -1,6 +1,6 @@
 # PDGWAS_regulatorynetworks
 
-This repository contains the supplementary tables for the paper "Establishing gene regulatory networks from Parkinson's disease risk loci"
+This repository contains the supplementary tables, and bootstrapping analysis script, for the paper "Establishing gene regulatory networks from Parkinson's disease risk loci". See below for supplementary table descriptions. 
 
 Supplementary table 1: Nalls et al. 2019 GWAS dataset. Data downloaded directly from the publication Supplementary files. Odds ratios obtained from the IPDGC PD locus web browser.
 
