@@ -1,0 +1,286 @@
+# gene sample sets
+#!/usr/bin/env python
+
+import argparse
+import pandas as pd
+import os
+import tqdm
+
+
+def parse_lookup(fp):
+    print('Parsing lookup table...')
+    return (pd.read_csv(fp, sep='\t', header=None,
+                     names=['chrom', 'start', 'end', 'gene', 'gencode_id'])
+          .assign(gencode_id = lambda x: x['gencode_id'].str.split('.', expand=True)[0])
+          )[['gene', 'gencode_id']]
+
+def samplify(lookup, num_sim, size, out):
+    print('Sampling genes...')
+    for i in tqdm.tqdm(range(num_sim)):
+        snps = lookup.sample(n=size, random_state=i)
+        write_results(snps, i, out)
+
+def write_results(df, i, out):
+    fp = os.path.join(out, f'{i}.txt')
+    os.makedirs(out, exist_ok=True)
+    df.to_csv(fp, sep='\t', index=False)
+    
+if __name__=='__main__':
+    parser = argparse.ArgumentParser(
+        description='''Sample gene from reference''')
+    parser.add_argument('-n', '--num-sim', required=True, type=int,
+                        help='Number of simulations.')
+    parser.add_argument('-s', '--size', required=True, type=int,
+                        help='Size of samples in each simulation.')
+    parser.add_argument('-o', '--output-dir', required=True,
+                        help='Directory to write results.')
+    parser.add_argument(
+        '-l', '--lookup',
+        default=os.path.join(
+            os.path.dirname(__file__),
+            '../data/gene_reference.bed'),
+        help='A BED file of gene references. Default: in data directory.')
+    args = parser.parse_args()
+
+    lookup = parse_lookup(args.lookup)
+    samplify(lookup, args.num_sim, args.size, args.output_dir)
+
+# GWAS SNP sets 
+
+#!/usr/bin/env python
+
+import argparse
+import pandas as pd
+import os
+import tqdm
+
+def read_gwas():
+    print('Reading associations from online GWAS Catalog...')
+    gwas = pd.read_csv('https://www.ebi.ac.uk/gwas/api/search/downloads/full',
+                       sep='\t', low_memory=False)
+    gwas_traits = (
+        gwas[['SNPS', 'DISEASE/TRAIT', 'P-VALUE']]
+        .rename(columns={'SNPS': 'snp',
+                         'DISEASE/TRAIT': 'trait',
+                         'P-VALUE': 'pval'})
+        .drop('snp', axis=1)
+        .join(gwas['SNPS']
+                .str
+                .split(r',|;| x ', expand=True)
+                .stack()
+                .reset_index(drop=True, level=1)
+                .rename('snp'))
+        .drop_duplicates()
+    )
+    gwas_traits['snp'] = gwas_traits['snp'].str.strip()
+    pd_snps = gwas_traits[gwas_traits.trait.str.contains('parkinson', case=False)]['snp'].unique()
+    gwas_snps = (
+        gwas_traits[((gwas_traits.pval <= 5e-08) & ~(gwas_traits.snp.isin(pd_snps)))]
+    )[['snp']].drop_duplicates()
+
+    return gwas_snps
+    
+
+def samplify(lookup, num_sim, size, out):
+    print('Sampling variants...')
+    for i in tqdm.tqdm(range(num_sim)):
+        snps = lookup.sample(n=size, random_state=i)
+        write_results(snps, i, out)
+
+def write_results(df, i, out):
+    fp = os.path.join(out, f'{i}.txt')
+    os.makedirs(out, exist_ok=True)
+    df.to_csv(fp, sep='\t', index=False, header=False)
+    
+if __name__=='__main__':
+    parser = argparse.ArgumentParser(
+        description='''Sample variants from lookup table''')
+    parser.add_argument('-n', '--num-sim', required=True, type=int,
+                        help='Number of simulations.')
+    parser.add_argument('-s', '--size', required=True, type=int,
+                        help='Size of samples in each simulation.')
+    parser.add_argument('-o', '--output-dir', required=True,
+                        help='Directory to write results.')
+
+    args = parser.parse_args()
+    gwas_snps = read_gwas()
+    samplify(gwas_snps, args.num_sim, args.size, args.output_dir)
+
+# All SNPs SNP sets
+
+#!/usr/bin/env python
+
+import argparse
+import pandas as pd
+import os
+import tqdm
+
+
+def parse_lookup(fp):
+    print('Parsing lookup table...')
+    df = (pd.read_csv(fp, sep='\t', #compression='gzip',
+                usecols=['rs_id_dbSNP151_GRCh38p7'])
+     .rename(columns={'rs_id_dbSNP151_GRCh38p7': 'snp'})
+     )
+    return df[df['snp'] != '.']
+
+def samplify(lookup, num_sim, size, out):
+    print('Sampling variants...')
+    for i in tqdm.tqdm(range(num_sim)):
+        snps = lookup.sample(n=size, random_state=i)
+        write_results(snps, i, out)
+
+def write_results(df, i, out):
+    fp = os.path.join(out, f'{i}.txt')
+    os.makedirs(out, exist_ok=True)
+    df.to_csv(fp, sep='\t', index=False, header=False)
+    
+if __name__=='__main__':
+    parser = argparse.ArgumentParser(
+        description='''Sample variants from lookup table''')
+    parser.add_argument('-n', '--num-sim', required=True, type=int,
+                        help='Number of simulations.')
+    parser.add_argument('-s', '--size', required=True, type=int,
+                        help='Size of samples in each simulation.')
+    parser.add_argument('-o', '--output-dir', required=True,
+                        help='Directory to write results.')
+    parser.add_argument(
+        '-l', '--lookup',
+        default=os.path.join(
+            os.path.dirname(__file__),
+            '../data/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz'),
+        help='A lookup table of rsIDs. Default: in data directory.')
+    args = parser.parse_args()
+
+    lookup = parse_lookup(args.lookup)
+    samplify(lookup, args.num_sim, args.size, args.output_dir)
+
+# gProfiler simulation queries 
+
+#!/usr/bin/env python
+
+import argparse
+import pandas as pd
+import os
+import tqdm
+from gprofiler import GProfiler
+import sys
+
+
+def init_gprofiler():
+    return GProfiler(return_dataframe=True)
+
+def parse_study(fp):
+    return pd.read_excel(fp)
+    
+def write_results(df, i, out):
+    fp = os.path.join(out, f'{i}.txt')
+    os.makedirs(out, exist_ok=True)
+    df.to_csv(fp, sep='\t', index=False)
+
+def process(gene_dir, gp, gp_dir, out):
+    print('Querying g:profiler')
+    summ = []
+    for sim in tqdm.tqdm(os.listdir(gene_dir)):
+        fp = os.path.join(gene_dir, sim, 'significant_eqtls.txt')
+        if not os.path.isfile(fp):
+            continue
+        df = pd.read_csv(fp, sep='\t')
+        df['gencode_id'] = df['gencode_id'].str.split('.').str[0]
+        res = gp.profile(organism='hsapiens',
+                         query=df['gencode_id'].drop_duplicates().tolist())
+        summ.append((sim, df['gencode_id'].nunique()))
+        write_results(res, sim, gp_dir)
+    summ = pd.DataFrame(summ, columns=['sim', 'count'])
+    summ.to_csv(os.path.join(out, 'sim_summary.txt'), sep='\t', index=False)
+        
+def collate(gprof_dir, gene_dir):
+    print('Collating results...')
+    g_dict = {}
+    for fp in os.listdir(gprof_dir):
+        df = pd.read_csv(os.path.join(gprof_dir, fp), sep='\t')
+        if df.empty:
+            continue
+        df = df[df.significant == True]
+        for i, row in df.iterrows():
+            if not row['native'] in g_dict.keys():
+                g_dict[row['native']] = {}
+                g_dict[row['native']]['term_id'] = row['native']
+                g_dict[row['native']]['source'] = row['source']
+                g_dict[row['native']]['term_name'] = row['name']
+                g_dict[row['native']]['bootstrap_count'] = 0
+            g_dict[row['native']]['bootstrap_count'] += 1
+    res = (pd.DataFrame.from_dict(g_dict, orient='index').reset_index(drop=True))
+    res['bootstrap_pval'] = res['bootstrap_count'] / len(os.listdir(gene_dir))
+    return res
+
+            
+if __name__=='__main__':
+    parser = argparse.ArgumentParser(
+        description='''Query g:Profiler''')
+    parser.add_argument('-g', '--gwas-dir', required=True,
+                        help='Directory of gene lists..')
+    parser.add_argument('-o', '--output-dir', required=True,
+                        help='Directory to write results.')
+    parser.add_argument('-s', '--study', required=True,
+                        help='g:Profiler results from study in Excel.')
+    args = parser.parse_args()
+    gprofiler_dir = os.path.join(args.output_dir, 'gprofiler')
+    gp = init_gprofiler()
+    process(args.gwas_dir, gp, gprofiler_dir, args.output_dir)
+    study = parse_study(args.study)
+    collated = collate(gprofiler_dir, args.gwas_dir)
+    results = study.merge(collated, how='left')
+    results['bootstrap_pval'] = results['bootstrap_pval'].fillna('<0.001')
+    print(results[['source', 'term_name', 'term_id', 'bootstrap_count', 'bootstrap_pval']])
+    results.to_csv(os.path.join(args.output_dir, 'gwas_egenes_gprofiler_summary.txt'),
+                   sep='\t', index=False)
+
+# Intersecting simulation genes with 518 PD genes
+
+#!/usr/bin/env python
+
+import argparse
+import pandas as pd
+import os
+import tqdm
+from gprofiler import GProfiler
+import sys
+
+
+def parse_study(fp):
+    return pd.read_csv(fp, sep='\t')
+    
+def process(study, eqtls_dir, out):
+    print('Querying g:profiler')
+    summ = []
+    study_gene_count = study['gencode_id'].nunique()
+    study_genes = study['gencode_id'].unique()
+    for sim in tqdm.tqdm(os.listdir(eqtls_dir)):
+        fp = os.path.join(eqtls_dir, sim, 'significant_eqtls.txt')
+        sim_name = sim.split('.')[0]
+        if not os.path.isfile(fp):
+            continue
+        df = pd.read_csv(fp, sep='\t')
+        df_gene_count = df['gencode_id'].nunique()
+        overlap_count = df[df['gencode_id'].isin(study_genes)]['gencode_id'].nunique()
+        pd_gene_prop = round(overlap_count / df_gene_count, 2)
+        summ.append((sim_name, df_gene_count, overlap_count, pd_gene_prop))
+ 
+    summ = pd.DataFrame(summ, columns=['sim', 'total_genes', 'pd_overlap', 'prop_overlap'])
+    summ.to_csv(out, sep='\t', index=False)
+        
+            
+if __name__=='__main__':
+    parser = argparse.ArgumentParser(
+        description='')
+    parser.add_argument('-e', '--eqtls', required=True,
+                        help='Directory containing simulations of CoDeS3D results.')
+    parser.add_argument('-o', '--output', required=True,
+                        help='Filepath to write results.')
+    parser.add_argument('-s', '--study', required=True,
+                        help='g:Profiler results from study in Excel.')
+    args = parser.parse_args()
+    study = parse_study(args.study)
+    process(study, args.eqtls, args.output)
+
