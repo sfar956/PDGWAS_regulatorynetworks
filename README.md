@@ -22,9 +22,15 @@ Supplementary table 8: Nalls et al. 2019 GWAS: Sig eQTLs CoDeS3D output. Detaile
 
 Supplementary table 9: Gene regulatory network analysis. Protein:protein interaction analysis of 523 genes (using STRING, high confidence levels >0.700) followed by Louvain clustering identified 9 significant clusters. 
 
-Supplementary table 10: Pathway analysis for the genes within each of the nine significant clusters; gProfiler (g:OST) results
+Supplementary table 9b: Risk vs. protective proportion analysis of nine clusters
+
+Supplementary table 10: Pathway analysis for the genes within each of the nine significant clusters; gProfiler (g:OST) results (inc. bootstrapping analysis results)
+
+Supplementary table 10b: Association between cluster enriched pathways and Parkinson's disease - reference table
 
 Supplementary table 11: Sig eQTLs CoDeS3D output for rs10835060 and rs4238361: These two SNPs were identified by Makarious et al. as part of a polygenic risk score for PD diagnosis
 
 Supplementary table 12: Correlational analysis – tissues falling outside of the 95% CI of expected eQTL numbers. Detailed data of the tissues that fall above or below the 95% CI of expected eQTL numbers, supplemental to figure 2. The data includes information for the analysis run on all 49 tissues (i.e. figure 2e-h). 
+
+Supplementary table 13: % trans-eQTLs compared to total eQTLs for previous studies using CoDeS3D analysis
 
